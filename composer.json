@@ -18,7 +18,7 @@
     "authors": [
         {
             "name": ":author_name",
-            "email": "author@domain.com"        }
+            "email": "author@domain.com"
         }
     ],
     "require": {
@@ -53,16 +53,16 @@
     },
     "scripts": {
         "analyse": "vendor/bin/phpstan analyse",
-        "lint": [
+        "format": [
             "vendor/bin/pint --parallel"
         ],
+        "format:test": "vendor/bin/pint --parallel --test",
         "refactor": "rector",
         "test": [
             "@php artisan config:clear --ansi",
             "vendor/bin/pest"
         ],
         "test:coverage": "vendor/bin/pest --coverage",
-        "format:test": "vendor/bin/pint --parallel --test",
         "refactor:test": "rector --dry-run",
         "ci:check": [
             "Composer\\Config::disableProcessTimeout",
