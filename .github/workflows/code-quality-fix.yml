@@ -1,0 +1,81 @@
+#Hoe dit werkt:
+
+#Rector & Pint:
+#  De tools draaien niet meer in "dry-run", maar passen de bestanden daadwerkelijk aan in de tijdelijke GitHub-omgeving.
+
+#Git Auto Commit:
+#  Deze actie herkent of er bestanden zijn gewijzigd. Zo ja, dan maakt hij een nieuwe commit aan met de melding:
+#    chore: auto-fix code quality.
+
+#Permissions:
+#  Zorg ervoor dat je GitHub-instellingen tostaan dat Actions mogen schrijven naar de repo (ga naar Settings > Actions > General > Workflow permissions en selecteer Read and write permissions).
+
+#Belangrijk om te weten:
+#Merge-conflicten:
+#  Omdat GitHub code pusht naar je branch, moet je op je eigen computer even een git pull doen voordat je verder werkt aan diezelfde branch.
+
+name: Auto Fix Code Quality (Rector & Pint)
+
+on:
+  push:
+    branches: [ main, master, develop ]
+    paths:
+      - '**.php' # Alleen uitvoeren als er PHP-bestanden wijzigen
+  pull_request:
+    branches: [ main, master, develop ]
+    paths:
+      - '**.php'
+
+jobs:
+  auto-fix-code:
+    runs-on: ubuntu-latest
+    # Voorkom dat de action in een oneindige lus terechtkomt
+    if: "!contains(github.event.head_commit.message, 'chore: auto-fix code quality')"
+
+    env:
+      # Forceert het gebruik van Node.js 24 om de deprecation waarschuwing op te lossen
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          # Nodig om te kunnen pushen naar de branch
+          ref: ${{ github.head_ref }}
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: mbstring, xml, ctype, iconv, mysql
+          coverage: none # Bespaart tijd door Xdebug uit te schakelen
+
+      - name: Get Composer Cache Directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
+
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: ${{ runner.os }}-composer-
+
+      - name: Install Dependencies
+        run: composer install --no-progress --prefer-dist --optimize-autoloader
+
+      # 1. Voer Rector uit en pas bestanden aan
+      - name: Run Rector
+        # Rector alleen op specifieke mappen draaien voor maximale snelheid
+        run: ./vendor/bin/rector process app config database tests
+
+      # 2. Voer Pint uit en zet alles in PSR-stijl
+      - name: Run Pint
+        run: ./vendor/bin/pint
+
+      # 3. Commit de wijzigingen terug naar de repository
+      - name: Commit changes
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: auto-fix code quality (Rector & Pint)"
+          # skip_fetch is verwijderd omdat dit niet meer ondersteund wordt in nieuwe versies

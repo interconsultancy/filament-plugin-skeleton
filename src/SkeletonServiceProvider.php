@@ -19,7 +19,7 @@ use VendorName\Skeleton\Testing\TestsSkeleton;
 class SkeletonServiceProvider extends PackageServiceProvider
 {
     public static string $name = 'skeleton';
-    public static string $githubRepo = ':vendor_slug/:package_slug';
+    public static string $github = ':vendor_slug/:package_slug';
 
     public static string $viewNamespace = 'skeleton';
 
